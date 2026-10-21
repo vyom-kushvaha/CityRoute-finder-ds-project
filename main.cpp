@@ -1,131 +1,86 @@
-    while (true) {
-        cout << "Enter distance in km: ";
-
-        if (!(cin >> distance)) {
-            cout << "Non-numeric input is not handled in this basic version.\n";
-            return false;
-        }
-
-        if (distance > 0) {
-            return true;
-        }
-
-        cout << "Distance must be greater than 0!\n";
-    }
-}
-
-/*
-// Improved version: use this later to handle inputs like abc and ask again.
-// Comment out the basic readPositiveDistance() above before uncommenting this.
-bool readPositiveDistance(double& distance) {
-    while (true) {
-        cout << "Enter distance in km: ";
-
-        if (cin >> distance) {
-            if (distance > 0) {
-                return true;
-            }
-            cout << "Distance must be greater than 0!\n";
-        } else {
-            if (cin.eof()) {
-                return false;
-            }
-
-            cout << "Invalid input! Enter a number.\n";
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        }
-    }
-}
-*/
-
-void connectCities(vector<vector<Edge>>& graph, int u, int v) {
-    if (u == v) {
-        cout << "A city cannot be connected to itself.\n";
-        return;
-    }
-
-    int edgeUV = findEdgeIndex(graph[u], v);
-    int edgeVU = findEdgeIndex(graph[v], u);
-
-    if (edgeUV != -1 || edgeVU != -1) {
-        cout << "Road already exists between these cities.\n";
-        return;
-    }
-
-    double distance;
-    if (!readPositiveDistance(distance)) {
-        return;
-    }
-
-    graph[u].push_back({v, distance});
-    graph[v].push_back({u, distance});
-
-    cout << "Road added successfully.\n";
-}
-
-void addCity(vector<string>& cities, vector<vector<Edge>>& graph) {
-    string name;
-    cout << "Enter city name: ";
-    cin >> name;
-
-    if (findCityIndex(cities, name) != -1) {
-        cout << "City already exists!\n";
-        return;
-    }
-
-    cities.push_back(name);
-    graph.push_back(vector<Edge>());
-
-    cout << "City added successfully.\n";
-}
-
-void addRoad(const vector<string>& cities, vector<vector<Edge>>& graph) {
-    if (cities.size() < 2) {
-        cout << "Add at least two cities first.\n";
-        return;
-    }
-
-    string fromName, toName;
-
-    cout << "Enter starting city: ";
-    cin >> fromName;
-
-    cout << "Enter destination city: ";
-    cin >> toName;
-
-    int u = findCityIndex(cities, fromName);
-    int v = findCityIndex(cities, toName);
-
-    if (u == -1 || v == -1) {
-        cout << "One or both cities were not found!\n";
-        return;
-    }
-
-    connectCities(graph, u, v);
-}
-
-void displayNetwork(const vector<string>& cities,
-                    const vector<vector<Edge>>& graph) {
-    if (cities.empty()) {
-        cout << "No cities added yet.\n";
-        return;
-    }
-
-    cout << "\n--- City Network ---\n";
-    for (int i = 0; i < cities.size(); i++) {
-        cout << cities[i] << "\n";
-
-        if (graph[i].empty()) {
-            cout << "  No connected roads\n";
-        }
-
-        for (const Edge& edge : graph[i]) {
-            cout << "  -> " << cities[edge.to]
                  << " (" << edge.distance << " km)\n";
         }
         cout << "\n";
     }
+}
+
+void shortestRoute(const vector<string>& cities,
+                   const vector<vector<Edge>>& graph) {
+    if (cities.empty()) {
+        cout << "Add cities before finding a route.\n";
+        return;
+    }
+
+    string sourceName, destinationName;
+
+    cout << "Enter starting city: ";
+    cin >> sourceName;
+
+    cout << "Enter destination city: ";
+    cin >> destinationName;
+
+    int source = findCityIndex(cities, sourceName);
+    int destination = findCityIndex(cities, destinationName);
+
+    if (source == -1 || destination == -1) {
+        cout << "One or both cities were not found!\n";
+        return;
+    }
+
+    vector<double> dist(cities.size(), numeric_limits<double>::infinity());
+    vector<int> parent(cities.size(), -1);
+
+    priority_queue<
+        pair<double, int>,
+        vector<pair<double, int>>,
+        greater<pair<double, int>>
+    > pq;
+
+    dist[source] = 0;
+    pq.push({0, source});
+
+    while (!pq.empty()) {
+        double d = pq.top().first;
+        int u = pq.top().second;
+        pq.pop();
+
+        if (d > dist[u]) {
+            continue;
+        }
+
+        for (const Edge& edge : graph[u]) {
+            int v = edge.to;
+            double newDist = dist[u] + edge.distance;
+
+            if (newDist < dist[v]) {
+                dist[v] = newDist;
+                parent[v] = u;
+                pq.push({newDist, v});
+            }
+        }
+    }
+
+    if (dist[destination] == numeric_limits<double>::infinity()) {
+        cout << "No route exists between these cities.\n";
+        return;
+    }
+
+    vector<int> path;
+    for (int city = destination; city != -1; city = parent[city]) {
+        path.push_back(city);
+    }
+
+    reverse(path.begin(), path.end());
+
+    cout << "\nShortest route: ";
+    for (int i = 0; i < path.size(); i++) {
+        cout << cities[path[i]];
+        if (i < path.size() - 1) {
+            cout << " -> ";
+        }
+    }
+
+    cout << "\nTotal distance: " << dist[destination] << " km\n";
 }
 
 void showMenu() {
@@ -162,7 +117,7 @@ int main() {
                 displayNetwork(cities, graph);
                 break;
             case 4:
-                cout << "Shortest route will be added in Phase 4.\n";
+                shortestRoute(cities, graph);
                 break;
             case 5:
                 cout << "Exiting City Route Finder. Goodbye!\n";
@@ -170,12 +125,3 @@ int main() {
             default:
                 cout << "Invalid choice! Please select 1 to 5.\n";
         }
-
-        if (!cin) {
-            cout << "Input could not be read. Exiting.\n";
-            break;
-        }
-    }
-
-    return 0;
-}
