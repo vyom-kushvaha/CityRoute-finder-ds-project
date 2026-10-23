@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -6,6 +7,7 @@
 #include <queue>
 #include <functional>
 #include <utility>
+#include <cctype>
 
 using namespace std;
 
@@ -14,9 +16,20 @@ struct Edge {
     double distance;
 };
 
+// to compare city names without changing the original city list
+string toLower(string name) {
+    for (int i = 0; i < name.size(); i++) {
+        name[i] = static_cast<char>(
+            tolower(static_cast<unsigned char>(name[i]))
+        );
+    }
+    return name;
+}
+
+// to find city index; Anand, anand and ANAND return the same index
 int findCityIndex(const vector<string>& cities, const string& name) {
     for (int i = 0; i < cities.size(); i++) {
-        if (cities[i] == name) {
+        if (toLower(cities[i]) == toLower(name)) {
             return i;
         }
     }
@@ -24,6 +37,7 @@ int findCityIndex(const vector<string>& cities, const string& name) {
     return -1;
 }
 
+// to find whether a road to the target city already exists
 int findEdgeIndex(const vector<Edge>& edges, int target) {
     for (int i = 0; i < edges.size(); i++) {
         if (edges[i].to == target) {
@@ -34,6 +48,7 @@ int findEdgeIndex(const vector<Edge>& edges, int target) {
     return -1;
 }
 
+// to accept only positive road distances
 bool readPositiveDistance(double& distance) {
     while (true) {
         cout << "Enter distance in km: ";
@@ -51,29 +66,6 @@ bool readPositiveDistance(double& distance) {
     }
 }
 
-/*
-Future improvement: use this version instead of the basic readPositiveDistance()
-above when ready to handle inputs such as "abc" without restarting.
-
-bool readPositiveDistance(double& distance) {
-    while (true) {
-        cout << "Enter distance in km: ";
-
-        if (cin >> distance) {
-            if (distance > 0) {
-                return true;
-            }
-
-            cout << "Distance must be greater than 0!\n";
-        } else {
-            cout << "Invalid input! Enter a number.\n";
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        }
-    }
-}
-*/
-
 void connectCities(vector<vector<Edge>>& graph, int u, int v) {
     if (u == v) {
         cout << "A city cannot be connected to itself.\n";
@@ -89,10 +81,12 @@ void connectCities(vector<vector<Edge>>& graph, int u, int v) {
     }
 
     double distance;
+
     if (!readPositiveDistance(distance)) {
         return;
     }
 
+    // to store an undirected road in both directions
     graph[u].push_back({v, distance});
     graph[v].push_back({u, distance});
 
@@ -103,10 +97,12 @@ void addCity(vector<string>& cities, vector<vector<Edge>>& graph) {
     string name;
 
     cout << "Enter city name: ";
+
     if (!(cin >> name)) {
         return;
     }
 
+    // to prevent duplicate city names, regardless of letter case
     if (findCityIndex(cities, name) != -1) {
         cout << "City already exists!\n";
         return;
@@ -127,11 +123,13 @@ void addRoad(const vector<string>& cities, vector<vector<Edge>>& graph) {
     string sourceName, destinationName;
 
     cout << "Enter first city: ";
+
     if (!(cin >> sourceName)) {
         return;
     }
 
     cout << "Enter second city: ";
+
     if (!(cin >> destinationName)) {
         return;
     }
@@ -147,7 +145,8 @@ void addRoad(const vector<string>& cities, vector<vector<Edge>>& graph) {
     connectCities(graph, u, v);
 }
 
-void displayNetwork(const vector<string>& cities, const vector<vector<Edge>>& graph) {
+void displayNetwork(const vector<string>& cities,
+                    const vector<vector<Edge>>& graph) {
     if (cities.empty()) {
         cout << "No cities in the network.\n";
         return;
@@ -162,6 +161,7 @@ void displayNetwork(const vector<string>& cities, const vector<vector<Edge>>& gr
             cout << "  No connected roads\n";
         }
 
+        // to display each city and its connected roads
         for (const Edge& edge : graph[i]) {
             cout << "  -> " << cities[edge.to]
                  << " (" << edge.distance << " km)\n";
@@ -171,7 +171,8 @@ void displayNetwork(const vector<string>& cities, const vector<vector<Edge>>& gr
     }
 }
 
-void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& graph) {
+void shortestRoute(const vector<string>& cities,
+                   const vector<vector<Edge>>& graph) {
     if (cities.empty()) {
         cout << "Add cities before finding a route.\n";
         return;
@@ -180,11 +181,13 @@ void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& gra
     string sourceName, destinationName;
 
     cout << "Enter starting city: ";
+
     if (!(cin >> sourceName)) {
         return;
     }
 
     cout << "Enter destination city: ";
+
     if (!(cin >> destinationName)) {
         return;
     }
@@ -197,13 +200,16 @@ void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& gra
         return;
     }
 
+    // infinity means the shortest distance has not been found yet
     vector<double> dist(
         cities.size(),
         numeric_limits<double>::infinity()
     );
 
+    // to store the previous city for reconstructing the shortest route
     vector<int> parent(cities.size(), -1);
 
+    // min-heap processes the city with the smallest distance first
     priority_queue<
         pair<double, int>,
         vector<pair<double, int>>,
@@ -213,11 +219,13 @@ void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& gra
     dist[source] = 0;
     pq.push({0, source});
 
+    // Dijkstra's algorithm for finding the shortest route
     while (!pq.empty()) {
         double d = pq.top().first;
         int u = pq.top().second;
         pq.pop();
 
+        // to skip outdated entries when a shorter distance is already known
         if (d > dist[u]) {
             continue;
         }
@@ -226,6 +234,7 @@ void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& gra
             int v = edge.to;
             double newDist = dist[u] + edge.distance;
 
+            // update distance and parent only if the new route is shorter
             if (newDist < dist[v]) {
                 dist[v] = newDist;
                 parent[v] = u;
@@ -239,15 +248,18 @@ void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& gra
         return;
     }
 
+    // to trace the route backwards from destination to source
     vector<int> path;
 
     for (int v = destination; v != -1; v = parent[v]) {
         path.push_back(v);
     }
 
+    // to print the route in source-to-destination order
     reverse(path.begin(), path.end());
 
     cout << "\nShortest route: ";
+
     for (int i = 0; i < path.size(); i++) {
         cout << cities[path[i]];
 
@@ -259,12 +271,14 @@ void shortestRoute(const vector<string>& cities, const vector<vector<Edge>>& gra
     cout << "\nTotal distance: " << dist[destination] << " km\n";
 }
 
-void loadDemoNetwork(vector<string>& cities, vector<vector<Edge>>& graph) {
+void loadDemoNetwork(vector<string>& cities,
+                     vector<vector<Edge>>& graph) {
     cities = {"Anand", "Nadiad", "Vadodara", "Khambhat", "Ahmedabad"};
+
     graph.clear();
     graph.resize(cities.size());
 
-    // Demo roads (illustrative distances, not verified real-world distances)
+    // demo distances are illustrative, not verified real-world distances
     graph[0].push_back({1, 20});
     graph[1].push_back({0, 20});
 
@@ -301,6 +315,7 @@ int main() {
     vector<string> cities;
     vector<vector<Edge>> graph;
 
+    // to load sample cities and roads when the program starts
     loadDemoNetwork(cities, graph);
 
     cout << "Demo network loaded successfully!\n";
